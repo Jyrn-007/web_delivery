@@ -14,7 +14,7 @@ export function formatDateTime(value) {
 
 export const BRAND = {
   name: 'Esocity',
-  tagline: 'Logística de última milla',
+  tagline: 'Cada entrega, con el repartidor más cercano.',
 };
 
 export const STATUS_LABEL = {
