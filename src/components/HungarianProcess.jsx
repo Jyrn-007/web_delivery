@@ -14,7 +14,7 @@ export default function HungarianProcess({ preview, loading, error }) {
   return (
     <div className="panel wide-panel">
       <h2 className="clickable" onClick={() => setOpen((o) => !o)}>
-        {open ? '▾' : '▸'} Proceso del método húngaro (calculado por la API)
+        <span>{open ? '▾' : '▸'} Proceso del método húngaro</span>
       </h2>
 
       {open && (
@@ -27,17 +27,17 @@ export default function HungarianProcess({ preview, loading, error }) {
 
           {!loading && !error && !hasData && (
             <div className="dim small-note" style={{ padding: '10px 0' }}>
-              Aquí aparecerá la matriz de costos real y los pasos del método húngaro (calculados por tu API en
-              C#) en cuanto tengas al menos <b>1 repartidor disponible</b> y <b>1 pedido pendiente</b> al mismo
-              tiempo. Se actualiza solo cada vez que agregas un repartidor o un pedido nuevo.
+              Aquí aparecerá la matriz de distancias y los pasos del método húngaro en cuanto haya al menos
+              <b> 1 repartidor disponible</b> y <b>1 pedido pendiente</b>. Se actualiza solo al registrar un
+              repartidor o un pedido nuevo.
             </div>
           )}
 
           {!loading && !error && hasData && (
             <>
-              <div className="dim small-note">
+              <div className="small-note">
                 Filas = repartidores ({preview.driverLabels.join(', ')}) · columnas = pedidos (
-                {preview.orderLabels.join(', ')}) · distancias reales en km calculadas por la API.
+                {preview.orderLabels.join(', ')}) · distancias reales en km.
               </div>
               <div className="steps-row">
                 {preview.steps.map((s, idx) => (
@@ -83,8 +83,8 @@ export default function HungarianProcess({ preview, loading, error }) {
                   ))}
                 </div>
                 <div className="dim small-note" style={{ marginTop: 8 }}>
-                  Esta es una vista previa de solo lectura (no guarda nada). Para persistirla en MySQL usa el
-                  botón <b>"Optimizar asignaciones ahora"</b> del panel de la derecha.
+                  Esta es una vista previa de solo lectura (no guarda nada). Para guardarla usa el
+                  botón <b>"Asignar pedidos pendientes"</b>.
                 </div>
               </div>
             </>

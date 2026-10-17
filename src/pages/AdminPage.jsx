@@ -1,17 +1,29 @@
 import { useCallback, useState } from 'react';
 import MapView from '../components/MapView.jsx';
-import DriversPanel from '../components/DriversPanel.jsx';
-import OrdersPanel from '../components/OrdersPanel.jsx';
 import AssignmentsPanel from '../components/AssignmentsPanel.jsx';
 import HungarianProcess from '../components/HungarianProcess.jsx';
 import UsersPanel from '../components/UsersPanel.jsx';
+import OverviewView from '../components/admin/OverviewView.jsx';
+import OrdersView from '../components/admin/OrdersView.jsx';
+import DriversView from '../components/admin/DriversView.jsx';
+import HistoryView from '../components/admin/HistoryView.jsx';
+import { Icon, PageHeader } from '../components/ui.jsx';
 import { errorMessage, getAssignments, getDrivers, getOrders, previewAssignments } from '../api';
 import usePolling from '../hooks/usePolling';
 
 const DEFAULT_CENTER = [14.6349, -90.5069]; // Ciudad de Guatemala — ajustar a tu ciudad
 
+const NAV = [
+  ['overview', 'Resumen', 'overview'],
+  ['dispatch', 'Despacho', 'dispatch'],
+  ['orders', 'Pedidos', 'orders'],
+  ['drivers', 'Repartidores', 'drivers'],
+  ['history', 'Historial', 'history'],
+  ['users', 'Usuarios', 'users'],
+];
+
 export default function AdminPage() {
-  const [tab, setTab] = useState('dispatch'); // dispatch | users
+  const [view, setView] = useState('overview');
   const [drivers, setDrivers] = useState([]);
   const [orders, setOrders] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -45,38 +57,56 @@ export default function AdminPage() {
   // Se refresca solo cada 15 s: los repartidores se mueven y los clientes piden en vivo.
   usePolling(refresh, 15000);
 
+  const pending = orders.filter((o) => o.status === 'pending').length;
+
   return (
-    <>
-      <nav className="tabs">
-        <button className={tab === 'dispatch' ? 'tab active' : 'tab'} onClick={() => setTab('dispatch')}>Despacho</button>
-        <button className={tab === 'users' ? 'tab active' : 'tab'} onClick={() => setTab('users')}>Usuarios</button>
+    <div className="workspace">
+      <nav className="sidenav" aria-label="Secciones">
+        <div className="group">Operación</div>
+        {NAV.slice(0, 5).map(([key, label, icon]) => (
+          <button key={key} className={`navitem ${view === key ? 'active' : ''}`} onClick={() => setView(key)}>
+            <Icon name={icon} />
+            {label}
+            {key === 'dispatch' && pending > 0 && <span className="count">{pending}</span>}
+          </button>
+        ))}
+        <div className="group">Administración</div>
+        {NAV.slice(5).map(([key, label, icon]) => (
+          <button key={key} className={`navitem ${view === key ? 'active' : ''}`} onClick={() => setView(key)}>
+            <Icon name={icon} />
+            {label}
+          </button>
+        ))}
       </nav>
 
-      {tab === 'dispatch' && (
-        <>
-          {loadError && <div className="error banner" role="alert">{loadError}</div>}
-          <div className="layout">
-            <div className="sidebar">
-              <DriversPanel drivers={drivers} onRefresh={refresh} />
-              <OrdersPanel orders={orders} onRefresh={refresh} />
-            </div>
+      <main className="content">
+        {loadError && <div className="error banner" role="alert">{loadError}</div>}
 
-            <div className="map-container">
-              <MapView drivers={drivers} orders={orders} assignments={assignments} center={DEFAULT_CENTER} />
-            </div>
+        {view === 'overview' && <OverviewView drivers={drivers} orders={orders} assignments={assignments} onGo={setView} />}
 
-            <div className="sidebar">
+        {view === 'dispatch' && (
+          <>
+            <PageHeader title="Despacho" subtitle="Asigna los pedidos pendientes al repartidor más cercano." />
+            <div className="layout">
+              <div className="map-container">
+                <MapView drivers={drivers} orders={orders} assignments={assignments} center={DEFAULT_CENTER} />
+              </div>
               <AssignmentsPanel assignments={assignments} onRefresh={refresh} />
             </div>
-          </div>
-
-          <div className="bottom-section">
             <HungarianProcess preview={preview} loading={previewLoading} error={previewError} />
-          </div>
-        </>
-      )}
+          </>
+        )}
 
-      {tab === 'users' && <UsersPanel />}
-    </>
+        {view === 'orders' && <OrdersView orders={orders} onRefresh={refresh} />}
+        {view === 'drivers' && <DriversView drivers={drivers} onRefresh={refresh} onGo={setView} />}
+        {view === 'history' && <HistoryView assignments={assignments} />}
+        {view === 'users' && (
+          <>
+            <PageHeader title="Usuarios" subtitle="Cuentas de administradores, repartidores y clientes." />
+            <UsersPanel onChanged={refresh} />
+          </>
+        )}
+      </main>
+    </div>
   );
 }

@@ -1,28 +1,11 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { errorMessage } from '../api';
+import { Logo } from '../components/ui.jsx';
 
-// Roles que se pueden elegir al registrarse. "admin" NO está aquí a propósito.
-// Los valores coinciden con las constantes de Roles en el backend ("client" y "driver").
-const SELF_SIGNUP_ROLES = [
-  { value: 'client', label: 'Cliente', hint: 'Pide envíos' },
-  { value: 'driver', label: 'Repartidor', hint: 'Entrega pedidos' },
-];
-
-// Vehículos disponibles para repartidores (el valor por defecto del backend es "moto").
-const VEHICLE_TYPES = [
-  { value: 'moto', label: 'Moto' },
-  { value: 'bicicleta', label: 'Bicicleta' },
-  { value: 'carro', label: 'Carro' },
-  { value: 'pickup', label: 'Pickup' },
-  { value: 'camion', label: 'Camión' },
-];
-
-export default function LoginPage() {
+export default function LoginPage({ onBack }) {
   const { signIn, signUp, sessionNotice } = useAuth();
   const [mode, setMode] = useState('login'); // login | register
-  const [role, setRole] = useState(SELF_SIGNUP_ROLES[0].value);
-  const [vehicleType, setVehicleType] = useState(VEHICLE_TYPES[0].value);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -31,30 +14,17 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   const isRegister = mode === 'register';
-  const isDriver = role === 'driver';
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     if (!email.trim() || !password) { setError('Escribe tu correo y tu contraseña.'); return; }
     if (isRegister && fullName.trim().length < 2) { setError('Escribe tu nombre completo.'); return; }
-    if (isRegister && isDriver && !phone.trim()) { setError('Los repartidores deben indicar un teléfono.'); return; }
-    if (isRegister && isDriver && !VEHICLE_TYPES.some((v) => v.value === vehicleType)) {
-      setError('Elige el vehículo con el que vas a repartir.'); return;
-    }
-    // Defensa extra en el cliente: nunca se envía un rol que no esté en la lista.
-    if (isRegister && !SELF_SIGNUP_ROLES.some((r) => r.value === role)) { setError('Rol no permitido.'); return; }
 
     setLoading(true);
     try {
-      if (isRegister) {
-        const payload = { fullName, email, password, phone, role };
-        // Solo los repartidores envían vehículo.
-        if (isDriver) payload.vehicleType = vehicleType;
-        await signUp(payload);
-      } else {
-        await signIn(email, password);
-      }
+      if (isRegister) await signUp({ fullName, email, password, phone });
+      else await signIn(email, password);
       // Al iniciar sesión, App cambia de pantalla según el rol.
     } catch (err) {
       setError(errorMessage(err));
@@ -68,90 +38,78 @@ export default function LoginPage() {
   }
 
   return (
-    // "login-bg" aplica la imagen de fondo (ver App.css). Solo existe en esta pantalla.
-    <div className="login-wrap login-bg">
-      <form className="login-card" onSubmit={handleSubmit} noValidate>
-        <h1>Centro de <span>Despacho</span></h1>
-        <div className="subtitle">
-          {isRegister
-            ? (isDriver ? 'Crea tu cuenta de repartidor para recibir entregas' : 'Crea tu cuenta de cliente para pedir un envío')
-            : 'Inicia sesión para continuar'}
+    <div className="login-shell">
+      <aside className="login-aside">
+        <Logo light size={34} />
+        <div>
+          <h2>Cada entrega, con el repartidor más cercano.</h2>
+          <p>Plataforma de despacho de Esocity: pedidos, repartidores y asignación óptima en un solo lugar.</p>
+          <ul>
+            <li>Asignación por kilómetros reales (método húngaro)</li>
+            <li>Seguimiento del pedido en tiempo real</li>
+            <li>Acceso por rol: cliente, repartidor y administrador</li>
+          </ul>
         </div>
+        <div className="foot">© {new Date().getFullYear()} Esocity. Todos los derechos reservados.</div>
+      </aside>
 
-        {sessionNotice && !isRegister && <div className="notice">{sessionNotice}</div>}
-
-        {isRegister && (
-          <div className="role-picker" role="radiogroup" aria-label="Tipo de cuenta">
-            {SELF_SIGNUP_ROLES.map((r) => (
-              <button
-                key={r.value}
-                type="button"
-                role="radio"
-                aria-checked={role === r.value}
-                className={`role-option${role === r.value ? ' active' : ''}`}
-                onClick={() => setRole(r.value)}
-              >
-                <strong>{r.label}</strong>
-                <span className="dim">{r.hint}</span>
-              </button>
-            ))}
+      <main className="login-main">
+        <form className="login-card" onSubmit={handleSubmit} noValidate>
+          {onBack && <button type="button" className="link back-link" onClick={onBack}>← Volver al inicio</button>}
+          <div>
+            <h1>{isRegister ? 'Crear cuenta de cliente' : 'Iniciar sesión'}</h1>
+            <p className="dim" style={{ marginTop: 4 }}>
+              {isRegister ? 'Regístrate para solicitar tus envíos.' : 'Ingresa con tu cuenta de Esocity.'}
+            </p>
           </div>
-        )}
 
-        {isRegister && (
-          <label>Nombre completo
-            <input value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
-          </label>
-        )}
+          {sessionNotice && !isRegister && <div className="notice">{sessionNotice}</div>}
 
-        <label>Correo
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus />
-        </label>
-
-        {isRegister && (
-          <label>Teléfono {isDriver ? '' : <span className="dim">(opcional)</span>}
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
-          </label>
-        )}
-
-        {isRegister && isDriver && (
-          <label>Vehículo
-            <select value={vehicleType} onChange={(e) => setVehicleType(e.target.value)}>
-              {VEHICLE_TYPES.map((v) => (
-                <option key={v.value} value={v.value}>{v.label}</option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        <label>Contraseña {isRegister && <span className="dim">(mínimo 8 caracteres)</span>}
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete={isRegister ? 'new-password' : 'current-password'}
-          />
-        </label>
-
-        {error && <div className="error" role="alert">{error}</div>}
-
-        <button className="btn-primary wide" disabled={loading}>
-          {loading ? 'Un momento…' : isRegister ? 'Crear cuenta' : 'Entrar'}
-        </button>
-
-        <div className="login-switch">
-          {isRegister ? (
-            <>¿Ya tienes cuenta? <button type="button" className="link" onClick={() => switchMode('login')}>Inicia sesión</button></>
-          ) : (
-            <>¿Eres nuevo? <button type="button" className="link" onClick={() => switchMode('register')}>Crea tu cuenta</button></>
+          {isRegister && (
+            <label className="field">Nombre completo
+              <input value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
+            </label>
           )}
-        </div>
-        {!isRegister && (
-          <div className="dim small-note">
-            Las cuentas de administrador las crea otro administrador.
+
+          <label className="field">Correo electrónico
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus />
+          </label>
+
+          {isRegister && (
+            <label className="field">Teléfono (opcional)
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
+            </label>
+          )}
+
+          <label className="field">Contraseña {isRegister && <span className="dim">(mínimo 8 caracteres)</span>}
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={isRegister ? 'new-password' : 'current-password'}
+            />
+          </label>
+
+          {error && <div className="error" role="alert" style={{ marginTop: 0 }}>{error}</div>}
+
+          <button className="btn-primary wide" disabled={loading}>
+            {loading ? 'Un momento…' : isRegister ? 'Crear cuenta' : 'Ingresar'}
+          </button>
+
+          <div className="login-switch">
+            {isRegister ? (
+              <>¿Ya tienes cuenta? <button type="button" className="link" onClick={() => switchMode('login')}>Inicia sesión</button></>
+            ) : (
+              <>¿Eres cliente nuevo? <button type="button" className="link" onClick={() => switchMode('register')}>Crea tu cuenta</button></>
+            )}
           </div>
-        )}
-      </form>
+          {!isRegister && (
+            <div className="small-note" style={{ textAlign: 'center' }}>
+              Las cuentas de repartidor y administrador las crea un administrador de Esocity.
+            </div>
+          )}
+        </form>
+      </main>
     </div>
   );
 }

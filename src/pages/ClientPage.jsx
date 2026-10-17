@@ -2,7 +2,25 @@ import { useCallback, useState } from 'react';
 import LiveMap from '../components/LiveMap.jsx';
 import { cancelOrder, createOrder, errorMessage, geocodeAddress, getMyOrders, reverseGeocode } from '../api';
 import usePolling from '../hooks/usePolling';
-import { formatDateTime, STATUS_LABEL } from '../util';
+import { Icon, StatusBadge } from '../components/ui.jsx';
+import { formatDateTime, orderCode } from '../util';
+
+const STEPS = ['Recibido', 'Asignado', 'Entregado'];
+const stepIndex = { pending: 0, assigned: 1, delivered: 2 };
+
+function Tracker({ status }) {
+  if (status === 'cancelled') {
+    return <div className="tracker cancelled"><div className="t-step"><span className="t-dot" />Pedido cancelado</div></div>;
+  }
+  const current = stepIndex[status] ?? 0;
+  return (
+    <div className="tracker" aria-label={`Estado: ${STEPS[current]}`}>
+      {STEPS.map((label, i) => (
+        <div key={label} className={`t-step ${i <= current ? 'done' : ''}`}><span className="t-dot" />{label}</div>
+      ))}
+    </div>
+  );
+}
 
 const DEFAULT_CENTER = [14.6349, -90.5069];
 
@@ -129,55 +147,66 @@ export default function ClientPage() {
     <div className="role-layout">
       <div className="sidebar">
         <form className="panel" onSubmit={handleSend} noValidate>
-          <h2>Nuevo pedido</h2>
+          <h2>Solicitar envío</h2>
           <div className="mini-form">
-            <input
-              placeholder="Referencia (opcional): casa azul, portón negro…"
-              value={address}
-              onChange={(e) => { setAddress(e.target.value); setOkMessage(''); }}
-              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch(); } }}
-            />
+            <div className="small-note" style={{ marginTop: 0 }}>
+              <b>1.</b> Toca el mapa para marcar dónde entregamos, o usa tu ubicación.
+            </div>
             <div className="row">
-              <button type="button" className="btn-ghost small" onClick={handleSearch} disabled={searching}>
-                {searching ? 'Buscando…' : 'Buscar dirección'}
-              </button>
-              <button type="button" className="btn-ghost small" onClick={handleUseMyLocation} disabled={searching}>
-                Usar mi ubicación
+              <button type="button" className="btn-ghost" onClick={handleUseMyLocation} disabled={searching}>
+                <Icon name="pin" size={16} /> Usar mi ubicación
               </button>
             </div>
-            {destination && (
+            {destination ? (
               <div className="result-box">
-                <div>📍 <b>Destino:</b> {destination.label}</div>
-                <div className="dim small-note">Toca el mapa para mover el punto.</div>
+                <div><b>Destino marcado</b></div>
+                <div className="dim">{destination.label}</div>
+                <div className="small-note" style={{ marginTop: 2 }}>Toca otro punto del mapa para moverlo.</div>
               </div>
+            ) : (
+              <div className="result-box dim">Aún no has marcado el destino en el mapa.</div>
             )}
-            <button className="btn-primary" disabled={sending}>{sending ? 'Enviando…' : 'Pedir envío'}</button>
+            <label className="field">
+              <span><b>2.</b> Referencia o dirección (opcional)</span>
+              <input
+                placeholder="Ej.: casa azul, portón negro"
+                value={address}
+                onChange={(e) => { setAddress(e.target.value); setOkMessage(''); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch(); } }}
+              />
+            </label>
+            <button type="button" className="btn-ghost small" onClick={handleSearch} disabled={searching} style={{ alignSelf: 'flex-start' }}>
+              <Icon name="search" size={14} /> {searching ? 'Buscando…' : 'Buscar esta dirección en el mapa'}
+            </button>
+            <button className="btn-primary" disabled={sending}>{sending ? 'Enviando…' : 'Confirmar pedido'}</button>
           </div>
           {formError && <div className="error" role="alert">{formError}</div>}
           {okMessage && <div className="notice">{okMessage}</div>}
         </form>
 
         <div className="panel">
-          <h2>Mis pedidos</h2>
+          <h2>Mis pedidos <span className="hint">{orders.length}</span></h2>
           {loadError && <div className="error" role="alert">{loadError}</div>}
           <div className="list tall-list">
             {orders.map((o) => (
-              <div key={o.id} className="list-item assignment">
+              <div key={o.id} className="list-item">
                 <div className="between">
-                  <b>{o.address}</b>
-                  <span className={`badge ${o.status}`}>{STATUS_LABEL[o.status] || o.status}</span>
+                  <span className="title">{orderCode(o.id)}</span>
+                  <StatusBadge status={o.status} />
                 </div>
+                <div>{o.address}</div>
                 <div className="dim">{formatDateTime(o.createdAt)}</div>
+                <Tracker status={o.status} />
                 {o.status === 'assigned' && o.driverName && (
-                  <div>
-                    🏍️ <b>{o.driverName}</b>
-                    {o.driverPhone ? <> · <a href={`tel:${o.driverPhone}`}>{o.driverPhone}</a></> : null}
-                    {o.distanceKm != null ? <span className="dim"> · a {o.distanceKm} km al salir</span> : null}
+                  <div className="result-box" style={{ margin: '4px 0 0' }}>
+                    <div>Repartidor: <b>{o.driverName}</b></div>
+                    {o.driverPhone ? <div><Icon name="phone" size={13} /> <a href={`tel:${o.driverPhone}`}>{o.driverPhone}</a></div> : null}
+                    {o.distanceKm != null ? <div className="dim">A {o.distanceKm} km al salir</div> : null}
                   </div>
                 )}
                 {o.status === 'pending' && (
                   <div className="actions">
-                    <span className="dim">Esperando repartidor…</span>
+                    <span className="dim">Esperando asignación de repartidor…</span>
                     <button type="button" className="btn-ghost small danger" disabled={busyId === o.id} onClick={() => handleCancel(o)}>
                       Cancelar
                     </button>
@@ -185,7 +214,7 @@ export default function ClientPage() {
                 )}
               </div>
             ))}
-            {orders.length === 0 && <div className="empty">Aún no has hecho pedidos.</div>}
+            {orders.length === 0 && <div className="empty">Todavía no has realizado pedidos.</div>}
           </div>
         </div>
       </div>

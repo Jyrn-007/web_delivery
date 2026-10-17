@@ -5,7 +5,8 @@ import {
   updateDriverLocation, updateDriverStatus,
 } from '../api';
 import usePolling from '../hooks/usePolling';
-import { distanceMeters, STATUS_LABEL } from '../util';
+import { Icon, StatusBadge } from '../components/ui.jsx';
+import { distanceMeters, VEHICLE_LABEL } from '../util';
 
 const DEFAULT_CENTER = [14.6349, -90.5069];
 const MIN_SEND_INTERVAL_MS = 15000;   // no más de un envío cada 15 s mientras se mueve
@@ -227,10 +228,10 @@ export default function DriverPage() {
     <div className="role-layout">
       <div className="sidebar">
         <div className="panel">
-          <h2>Mi estado</h2>
+          <h2>Mi disponibilidad</h2>
           <div className="status-line">
-            <span className={`badge big ${driver.status}`}>{STATUS_LABEL[driver.status] || driver.status}</span>
-            <span className="dim">{driver.vehicleType}</span>
+            <span className="badge-wrap"><StatusBadge status={driver.status} /></span>
+            <span className="dim">{VEHICLE_LABEL[driver.vehicleType] || driver.vehicleType}</span>
           </div>
 
           {driver.status === 'offline' && (
@@ -238,9 +239,9 @@ export default function DriverPage() {
               <p className="dim small-note">
                 Toca el mapa para marcar dónde estás y conéctate para empezar a recibir pedidos.
               </p>
-              {picked && <div className="result-box">📍 <b>Estoy en:</b> punto marcado en el mapa</div>}
+              {picked && <div className="result-box"><b>Ubicación marcada</b><span className="dim">Punto seleccionado en el mapa</span></div>}
               <button className="btn-primary wide" onClick={handleConnectHere} disabled={working || !picked}>
-                {working ? 'Conectando…' : picked ? '● Conectarme aquí' : 'Marca tu ubicación en el mapa'}
+                {working ? 'Conectando…' : picked ? 'Conectarme aquí' : 'Marca tu ubicación en el mapa'}
               </button>
               <button className="btn-ghost wide" style={{ marginTop: 8 }} onClick={handleConnect} disabled={working}>
                 Usar el GPS de mi dispositivo
@@ -275,12 +276,12 @@ export default function DriverPage() {
         </div>
 
         <div className="panel">
-          <h2>Mis entregas ({deliveries.length})</h2>
+          <h2>Mis entregas <span className="hint">{deliveries.length} {deliveries.length === 1 ? 'pendiente' : 'pendientes'}</span></h2>
           <div className="list">
             {deliveries.map((d) => (
-              <div key={d.id} className="list-item assignment">
-                <div><b>{d.customerName}</b></div>
-                <div className="dim">{d.address}</div>
+              <div key={d.id} className="list-item">
+                <div className="between"><span className="title">{d.customerName}</span><StatusBadge status="assigned" /></div>
+                <div>{d.address}</div>
                 <div className="dim">Distancia al asignarlo: {d.distanceKm} km</div>
                 <div className="actions">
                   <a
@@ -291,11 +292,11 @@ export default function DriverPage() {
                   >
                     Cómo llegar
                   </a>
-                  <button className="btn-primary small" onClick={() => handleComplete(d)} disabled={working}>Entregado</button>
+                  <button className="btn-primary small" onClick={() => handleComplete(d)} disabled={working}><Icon name="check" size={14} /> Entregado</button>
                 </div>
               </div>
             ))}
-            {deliveries.length === 0 && <div className="empty">No tienes entregas asignadas.</div>}
+            {deliveries.length === 0 && <div className="empty">No tienes entregas asignadas por ahora.</div>}
           </div>
         </div>
       </div>

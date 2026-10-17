@@ -37,13 +37,13 @@ export default function ChangePasswordModal({ onClose }) {
           </>
         ) : (
           <>
-            <label>Contraseña actual
+            <label className="field">Contraseña actual
               <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" autoFocus />
             </label>
-            <label>Nueva contraseña
+            <label className="field">Nueva contraseña
               <input type="password" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" />
             </label>
-            <label>Repite la nueva contraseña
+            <label className="field">Repite la nueva contraseña
               <input type="password" value={repeat} onChange={(e) => setRepeat(e.target.value)} autoComplete="new-password" />
             </label>
             {error && <div className="error" role="alert">{error}</div>}

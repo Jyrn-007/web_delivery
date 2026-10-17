@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { createUser, errorMessage, getUsers, resetUserPassword, setUserActive } from '../api';
 import usePolling from '../hooks/usePolling';
-import { formatDateTime, STATUS_LABEL } from '../util';
+import { formatDateTime, STATUS_LABEL, VEHICLE_LABEL } from '../util';
 
 const ROLE_LABEL = { admin: 'Administrador', driver: 'Repartidor', client: 'Cliente' };
 
@@ -15,7 +15,7 @@ function generatePassword(length = 10) {
 
 const EMPTY_FORM = { fullName: '', email: '', password: '', role: 'driver', phone: '', vehicleType: 'moto' };
 
-export default function UsersPanel() {
+export default function UsersPanel({ onChanged }) {
   const [users, setUsers] = useState([]);
   const [filter, setFilter] = useState('');
   const [listError, setListError] = useState('');
@@ -59,6 +59,7 @@ export default function UsersPanel() {
       setCreated({ name: user.fullName, email: user.email, password: form.password, role: user.role });
       setForm({ ...EMPTY_FORM, role: form.role, password: generatePassword() });
       await load();
+      onChanged?.();
     } catch (err) {
       setFormError(errorMessage(err));
     } finally {
@@ -100,38 +101,42 @@ export default function UsersPanel() {
   const visible = filter ? users.filter((u) => u.role === filter) : users;
 
   return (
-    <div className="users-grid">
+    <div className="layout-form">
       <div className="panel">
-        <h2>Crear cuenta</h2>
+        <h2>Nueva cuenta</h2>
         <form className="mini-form" onSubmit={handleCreate} noValidate>
-          <select value={form.role} onChange={set('role')}>
-            <option value="driver">Repartidor</option>
-            <option value="client">Cliente</option>
-            <option value="admin">Administrador</option>
-          </select>
-          <input placeholder="Nombre completo" value={form.fullName} onChange={set('fullName')} />
-          <input type="email" placeholder="Correo (será su usuario)" value={form.email} onChange={set('email')} />
-          <input placeholder="Teléfono" value={form.phone} onChange={set('phone')} />
-          {form.role === 'driver' && (
-            <select value={form.vehicleType} onChange={set('vehicleType')}>
-              <option value="moto">Moto</option>
-              <option value="bicicleta">Bicicleta</option>
-              <option value="auto">Auto</option>
+          <label className="field">Rol
+            <select value={form.role} onChange={set('role')}>
+              <option value="driver">Repartidor</option>
+              <option value="client">Cliente</option>
+              <option value="admin">Administrador</option>
             </select>
+          </label>
+          <label className="field">Nombre completo
+            <input value={form.fullName} onChange={set('fullName')} />
+          </label>
+          <label className="field">Correo electrónico (será su usuario)
+            <input type="email" value={form.email} onChange={set('email')} />
+          </label>
+          <label className="field">Teléfono
+            <input value={form.phone} onChange={set('phone')} />
+          </label>
+          {form.role === 'driver' && (
+            <label className="field">Vehículo
+              <select value={form.vehicleType} onChange={set('vehicleType')}>
+                <option value="moto">Moto</option>
+                <option value="bicicleta">Bicicleta</option>
+                <option value="auto">Automóvil</option>
+              </select>
+            </label>
           )}
-          <div className="row">
-            <input
-              className="grow"
-              placeholder="Contraseña inicial"
-              value={form.password}
-              onChange={set('password')}
-              autoComplete="off"
-            />
-            <button type="button" className="btn-ghost small" onClick={() => setForm((f) => ({ ...f, password: generatePassword() }))}>
-              Generar
-            </button>
-          </div>
-          <button className="btn-primary" disabled={saving}>{saving ? 'Creando…' : '+ Crear cuenta'}</button>
+          <label className="field">Contraseña inicial
+            <div className="row" style={{ flexWrap: 'nowrap' }}>
+              <input className="grow" value={form.password} onChange={set('password')} autoComplete="off" />
+              <button type="button" className="btn-ghost" onClick={() => setForm((f) => ({ ...f, password: generatePassword() }))}>Generar</button>
+            </div>
+          </label>
+          <button className="btn-primary" disabled={saving}>{saving ? 'Creando…' : 'Crear cuenta'}</button>
         </form>
         {formError && <div className="error" role="alert">{formError}</div>}
 
@@ -146,9 +151,9 @@ export default function UsersPanel() {
         )}
       </div>
 
-      <div className="panel">
-        <h2>Cuentas ({visible.length})</h2>
-        <div className="row" style={{ marginBottom: 10 }}>
+      <div className="panel flush">
+        <h2>Cuentas <span className="hint">{visible.length} {visible.length === 1 ? "cuenta" : "cuentas"}</span></h2>
+        <div className="toolbar">
           {[['', 'Todas'], ['driver', 'Repartidores'], ['client', 'Clientes'], ['admin', 'Admins']].map(([value, label]) => (
             <button
               key={value || 'all'}
@@ -161,26 +166,26 @@ export default function UsersPanel() {
           ))}
         </div>
 
-        {listError && <div className="error" role="alert">{listError}</div>}
-        {rowMessage && <div className="error" role="alert">{rowMessage}</div>}
+        {listError && <div className="error" role="alert" style={{ margin: 12 }}>{listError}</div>}
+        {rowMessage && <div className="error" role="alert" style={{ margin: 12 }}>{rowMessage}</div>}
 
         <div className="table-scroll">
           <table className="data-table">
             <thead>
-              <tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th></th></tr>
+              <tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th /></tr>
             </thead>
             <tbody>
               {visible.map((u) => (
                 <tr key={u.id} className={u.isActive ? '' : 'inactive'}>
-                  <td>{u.fullName}{u.role === 'driver' && u.vehicleType ? <span className="dim"> · {u.vehicleType}</span> : null}</td>
+                  <td>{u.fullName}{u.role === 'driver' && u.vehicleType ? <span className="dim"> · {VEHICLE_LABEL[u.vehicleType] || u.vehicleType}</span> : null}</td>
                   <td>{u.email}</td>
                   <td><span className={`badge role-${u.role}`}>{ROLE_LABEL[u.role]}</span></td>
                   <td>
-                    {u.isActive ? <span className="badge available">activa</span> : <span className="badge offline">desactivada</span>}
+                    {u.isActive ? <span className="badge available">Activa</span> : <span className="badge offline">Desactivada</span>}
                     {u.role === 'driver' && u.driverStatus && <span className={`badge ${u.driverStatus}`}>{STATUS_LABEL[u.driverStatus] || u.driverStatus}</span>}
                   </td>
-                  <td className="dim">{u.lastLoginAt ? formatDateTime(u.lastLoginAt) : 'nunca'}</td>
-                  <td className="actions">
+                  <td className="dim">{u.lastLoginAt ? formatDateTime(u.lastLoginAt) : 'Nunca'}</td>
+                  <td className="actions-cell">
                     <button className="btn-ghost small" disabled={busyId === u.id} onClick={() => handleReset(u)}>Contraseña</button>
                     <button className="btn-ghost small danger" disabled={busyId === u.id} onClick={() => toggleActive(u)}>
                       {u.isActive ? 'Desactivar' : 'Activar'}
