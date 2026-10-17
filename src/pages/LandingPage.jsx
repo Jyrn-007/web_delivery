@@ -1,28 +1,59 @@
+import { useEffect, useMemo, useState } from 'react';
 import './LandingPage.css';
 import { Logo } from '../components/ui.jsx';
 
-// Pantalla de bienvenida: explica el sistema y lleva al login con el botón "Iniciar".
+// Pantalla de bienvenida: explica el sistema y lleva al login con el botón "Ingresar".
 // Recibe `onStart` (lo define App.jsx) para cambiar a la pantalla de login.
 
 // Rutas del mapa de ejemplo (todas siguen las calles de la cuadrícula de 60 px).
 // Cada repartidor va hacia el pedido que le tocó en la asignación del ejemplo.
 const ROUTES = [
-  { id: 'carlos', d: 'M40,280 H100 V220 H220 V100', start: [40, 280], rest: [160, 220], order: [220, 100], n: '1', dur: '8s', begin: '0s' },
-  { id: 'maria', d: 'M460,280 V220 H400 V160', start: [460, 280], rest: [430, 220], order: [400, 160], n: '2', dur: '6s', begin: '0s' },
-  { id: 'juan', d: 'M160,400 V340 H340', start: [160, 400], rest: [160, 340], order: [340, 340], n: '3', dur: '7s', begin: '0s' },
+  { id: 'carlos', d: 'M40,280 H100 V220 H220 V100', start: [40, 280], rest: [160, 220], order: [220, 100], dur: '8s' },
+  { id: 'maria', d: 'M460,280 V220 H400 V160', start: [460, 280], rest: [430, 220], order: [400, 160], dur: '6s' },
+  { id: 'juan', d: 'M160,400 V340 H340', start: [160, 400], rest: [160, 340], order: [340, 340], dur: '7s' },
 ];
 
 const GRID_X = [40, 100, 160, 220, 280, 340, 400, 460];
 const GRID_Y = [40, 100, 160, 220, 280, 340, 400];
 
-// Ejemplo de la matriz de distancias (km). La combinación de menor total se resalta.
-const DRIVERS = ['Carlos', 'María', 'Juan'];
+// Ejemplo de la matriz de distancias (km): fila = repartidor, columna = pedido.
+const DRIVERS = [
+  { name: 'Carlos', vehicle: 'moto' },
+  { name: 'María', vehicle: 'bicicleta' },
+  { name: 'Juan', vehicle: 'moto' },
+];
 const KM = [
   [1.2, 4.8, 3.1],
   [3.9, 0.8, 5.2],
   [2.7, 3.3, 1.5],
 ];
-const PICKS = [0, 1, 2]; // columna elegida para cada fila
+
+// Prueba todas las combinaciones posibles y devuelve la de menor total.
+// Así el resaltado de la tabla y el total siempre son correctos, aunque cambies los km.
+function bestAssignment(km) {
+  const n = km.length;
+  let best = { total: Infinity, picks: [] };
+
+  const walk = (row, picks, used, sum) => {
+    if (row === n) {
+      if (sum < best.total) best = { total: sum, picks: [...picks] };
+      return;
+    }
+    for (let col = 0; col < n; col += 1) {
+      if (used.has(col)) continue;
+      used.add(col);
+      picks.push(col);
+      walk(row + 1, picks, used, sum + km[row][col]);
+      picks.pop();
+      used.delete(col);
+    }
+  };
+
+  walk(0, [], new Set(), 0);
+  return best;
+}
+
+const factorial = (n) => (n <= 1 ? 1 : n * factorial(n - 1));
 
 const FEATURES = [
   { title: 'Mapa en tiempo real', text: 'Repartidores y pedidos en un solo mapa, con la ubicación que cada repartidor comparte.' },
@@ -45,25 +76,43 @@ const ROLES = [
   { name: 'Administrador', items: ['Ve el mapa y todos los pedidos', 'Ejecuta la asignación óptima', 'Gestiona usuarios y repartidores'] },
 ];
 
-function prefersReducedMotion() {
-  return typeof window !== 'undefined'
-    && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+
+// Respeta la preferencia de movimiento reducido y reacciona si el usuario la cambia
+// mientras la página está abierta.
+function useReducedMotion() {
+  const supported = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  const [reduce, setReduce] = useState(() => (supported ? window.matchMedia(REDUCED_MOTION_QUERY).matches : false));
+
+  useEffect(() => {
+    if (!supported) return undefined;
+    const mq = window.matchMedia(REDUCED_MOTION_QUERY);
+    const onChange = (e) => setReduce(e.matches);
+    setReduce(mq.matches);
+    if (mq.addEventListener) {
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
+    }
+    mq.addListener(onChange); // Safari antiguo
+    return () => mq.removeListener(onChange);
+  }, [supported]);
+
+  return reduce;
 }
 
-function DispatchMap({ reduce }) {
+function DispatchMap({ reduce, picks }) {
   return (
     <div className="lp-map">
       <svg viewBox="0 0 500 440" role="img" aria-label="Ejemplo: tres repartidores en camino a tres pedidos por las calles de una ciudad">
         {/* calles */}
-        <g className="lp-streets">
+        <g className="lp-streets" aria-hidden="true">
           {GRID_X.map((x) => <line key={`x${x}`} x1={x} y1="20" x2={x} y2="420" />)}
           {GRID_Y.map((y) => <line key={`y${y}`} x1="20" y1={y} x2="480" y2={y} />)}
           <line className="lp-avenue" x1="40" y1="400" x2="460" y2="40" />
         </g>
 
         {/* rutas, pedidos y repartidores */}
-        {ROUTES.map((r) => (
+        {ROUTES.map((r, i) => (
           <g key={r.id}>
             <path className="lp-route" d={r.d} fill="none" />
             <circle className="lp-home" cx={r.start[0]} cy={r.start[1]} r="4" />
@@ -71,7 +120,7 @@ function DispatchMap({ reduce }) {
             <g transform={`translate(${r.order[0]} ${r.order[1]})`}>
               {!reduce && <circle className="lp-ping" r="8" />}
               <circle className="lp-pin" r="7" />
-              <text className="lp-pin-n" x="14" y="-10">{r.n}</text>
+              <text className="lp-pin-n" x="14" y="-10">{picks[i] + 1}</text>
             </g>
 
             {reduce ? (
@@ -83,7 +132,7 @@ function DispatchMap({ reduce }) {
               <g>
                 <circle className="lp-halo" r="13" />
                 <circle className="lp-driver" r="6" />
-                <animateMotion path={r.d} dur={r.dur} begin={r.begin} repeatCount="indefinite" />
+                <animateMotion path={r.d} dur={r.dur} begin="0s" repeatCount="indefinite" />
               </g>
             )}
           </g>
@@ -91,17 +140,22 @@ function DispatchMap({ reduce }) {
       </svg>
 
       <ul className="lp-legend" aria-label="Asignación de ejemplo">
-        <li><span className="lp-dot lp-dot-driver" />Carlos, moto<b>pedido 1 · 1.2 km</b></li>
-        <li><span className="lp-dot lp-dot-driver" />María, bicicleta<b>pedido 2 · 0.8 km</b></li>
-        <li><span className="lp-dot lp-dot-driver" />Juan, moto<b>pedido 3 · 1.5 km</b></li>
+        {DRIVERS.map((d, i) => (
+          <li key={d.name}>
+            <span className="lp-dot lp-dot-driver" />
+            {d.name}, {d.vehicle}
+            <b>pedido {picks[i] + 1} · {KM[i][picks[i]].toFixed(1)} km</b>
+          </li>
+        ))}
       </ul>
     </div>
   );
 }
 
 export default function LandingPage({ onStart }) {
-  const reduce = prefersReducedMotion();
-  const total = PICKS.reduce((sum, col, row) => sum + KM[row][col], 0);
+  const reduce = useReducedMotion();
+  const { total, picks } = useMemo(() => bestAssignment(KM), []);
+  const combinations = factorial(KM.length);
 
   return (
     <div className="lp">
@@ -118,113 +172,121 @@ export default function LandingPage({ onStart }) {
         <button type="button" className="lp-btn lp-btn-small" onClick={onStart}>Ingresar</button>
       </header>
 
-      {/* ------------------------------------------------ portada */}
-      <section className="lp-hero" id="inicio">
-        <div className="lp-hero-text">
-          <p className="lp-eyebrow">Esociety ·</p>
-          <h1>Cada pedido, con el repartidor más cercano</h1>
-          <p className="lp-lead">
-            Esociety asigna cada entrega al repartidor que menos kilómetros recorre. Los clientes
-            piden, los repartidores entregan y la operación se controla desde un solo panel.
-          </p>
-          <div className="lp-cta">
-            <button type="button" className="lp-btn" onClick={onStart}>Ingresar a la plataforma</button>
-            <a className="lp-link" href="#como-funciona">Ver cómo funciona</a>
-          </div>
-        </div>
-        <DispatchMap reduce={reduce} />
-      </section>
-
-      {/* ------------------------------------------------ qué incluye */}
-      <section className="lp-section" id="incluye">
-        <h2>Qué incluye</h2>
-        <p className="lp-sub">Lo necesario para despachar sin hojas de cálculo ni llamadas.</p>
-
-        <div className="lp-feat">
-          <div className="lp-feat-main">
-            <h3>Asignación óptima</h3>
-            <p>
-              No se asigna al primero que esté libre. El sistema compara la distancia de cada
-              repartidor con cada pedido y elige la combinación con menos kilómetros en total
-              (algoritmo húngaro).
+      <main>
+        {/* ---------------------------------------------- portada */}
+        <section className="lp-hero" id="inicio">
+          <div className="lp-hero-text">
+            <p className="lp-eyebrow">Despacho inteligente de entregas</p>
+            <h1>Cada pedido, con el repartidor más cercano</h1>
+            <p className="lp-lead">
+              Esociety asigna cada entrega al repartidor que menos kilómetros recorre. Los clientes
+              piden, los repartidores entregan y la operación se controla desde un solo panel.
             </p>
+            <div className="lp-cta">
+              <button type="button" className="lp-btn" onClick={onStart}>Ingresar a la plataforma</button>
+              <a className="lp-link" href="#como-funciona">Ver cómo funciona</a>
+            </div>
+          </div>
+          <DispatchMap reduce={reduce} picks={picks} />
+        </section>
 
-            <table className="lp-matrix">
-              <caption>Distancias en km: se elige la combinación más corta de las 6 posibles</caption>
-              <thead>
-                <tr>
-                  <td />
-                  <th scope="col">Pedido 1</th>
-                  <th scope="col">Pedido 2</th>
-                  <th scope="col">Pedido 3</th>
-                </tr>
-              </thead>
-              <tbody>
-                {KM.map((row, i) => (
-                  <tr key={DRIVERS[i]}>
-                    <th scope="row">{DRIVERS[i]}</th>
-                    {row.map((km, j) => (
-                      <td key={j} className={PICKS[i] === j ? 'lp-pick' : undefined}>{km.toFixed(1)}</td>
+        {/* ---------------------------------------------- qué incluye */}
+        <section className="lp-section" id="incluye" aria-labelledby="incluye-titulo">
+          <h2 id="incluye-titulo">Qué incluye</h2>
+          <p className="lp-sub">Lo necesario para despachar sin hojas de cálculo ni llamadas.</p>
+
+          <div className="lp-feat">
+            <div className="lp-feat-main">
+              <h3>Asignación óptima</h3>
+              <p>
+                No se asigna al primero que esté libre. El sistema compara la distancia de cada
+                repartidor con cada pedido y elige la combinación con menos kilómetros en total
+                (algoritmo húngaro).
+              </p>
+
+              <table className="lp-matrix">
+                <caption>Distancias en km: se elige la combinación más corta de las {combinations} posibles</caption>
+                <thead>
+                  <tr>
+                    <td />
+                    {KM[0].map((_, j) => (
+                      <th key={j} scope="col">Pedido {j + 1}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="lp-total">Total elegido: {total.toFixed(1)} km</p>
-          </div>
-
-          <ul className="lp-feat-list">
-            {FEATURES.map((f) => (
-              <li key={f.title}>
-                <h3>{f.title}</h3>
-                <p>{f.text}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------ cómo funciona */}
-      <section className="lp-section lp-band" id="como-funciona">
-        <div className="lp-inner">
-          <h2>Cómo funciona</h2>
-          <p className="lp-sub">De pedido a entrega en tres pasos.</p>
-          <ol className="lp-steps">
-            {STEPS.map((s) => (
-              <li key={s.n}>
-                <span className="lp-step-n" aria-hidden="true">{s.n}</span>
-                <h3>{s.title}</h3>
-                <p>{s.text}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------ roles */}
-      <section className="lp-section" id="roles">
-        <h2>Quién lo usa</h2>
-        <p className="lp-sub">Cada cuenta ve solo las herramientas que necesita.</p>
-        <div className="lp-roles">
-          {ROLES.map((r) => (
-            <div className="lp-role" key={r.name}>
-              <h3>{r.name}</h3>
-              <ul>
-                {r.items.map((i) => <li key={i}>{i}</li>)}
-              </ul>
+                </thead>
+                <tbody>
+                  {KM.map((row, i) => (
+                    <tr key={DRIVERS[i].name}>
+                      <th scope="row">{DRIVERS[i].name}</th>
+                      {row.map((km, j) => (
+                        <td
+                          key={j}
+                          className={picks[i] === j ? 'lp-pick' : undefined}
+                          aria-label={picks[i] === j ? `${km.toFixed(1)} km, elegido` : undefined}
+                        >
+                          {km.toFixed(1)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="lp-total">Total elegido: {total.toFixed(1)} km</p>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* ------------------------------------------------ cierre */}
-      <section className="lp-final">
-        <div className="lp-inner">
-          <h2>Gestiona tus entregas con Esociety</h2>
-          <p>Ingresa con tu cuenta, o crea tu cuenta de cliente para solicitar un envío.</p>
-          <button type="button" className="lp-btn" onClick={onStart}>Ingresar a la plataforma</button>
-        </div>
-      </section>
+            <ul className="lp-feat-list">
+              {FEATURES.map((f) => (
+                <li key={f.title}>
+                  <h3>{f.title}</h3>
+                  <p>{f.text}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------- cómo funciona */}
+        <section className="lp-section lp-band" id="como-funciona" aria-labelledby="como-titulo">
+          <div className="lp-inner">
+            <h2 id="como-titulo">Cómo funciona</h2>
+            <p className="lp-sub">De pedido a entrega en tres pasos.</p>
+            <ol className="lp-steps">
+              {STEPS.map((s) => (
+                <li key={s.n}>
+                  <span className="lp-step-n" aria-hidden="true">{s.n}</span>
+                  <h3>{s.title}</h3>
+                  <p>{s.text}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------- roles */}
+        <section className="lp-section" id="roles" aria-labelledby="roles-titulo">
+          <h2 id="roles-titulo">Quién lo usa</h2>
+          <p className="lp-sub">Cada cuenta ve solo las herramientas que necesita.</p>
+          <div className="lp-roles">
+            {ROLES.map((r) => (
+              <div className="lp-role" key={r.name}>
+                <h3>{r.name}</h3>
+                <ul>
+                  {r.items.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ---------------------------------------------- cierre */}
+        <section className="lp-final">
+          <div className="lp-inner">
+            <h2>Gestiona tus entregas con Esociety</h2>
+            <p>Ingresa con tu cuenta, o crea tu cuenta de cliente para solicitar un envío.</p>
+            <button type="button" className="lp-btn" onClick={onStart}>Ingresar a la plataforma</button>
+          </div>
+        </section>
+      </main>
 
       <footer className="lp-footer">
         <span>© {new Date().getFullYear()} Esociety. Todos los derechos reservados.</span>
