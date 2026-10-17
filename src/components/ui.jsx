@@ -9,7 +9,7 @@ export function Logo({ light = false, size = 30 }) {
         <path d="M20 10H10v12h10M10 16h8" stroke={light ? '#0b1f3a' : '#ffffff'} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
         <circle cx="22.5" cy="21.5" r="3.2" fill="#2f7de1" />
       </svg>
-      <span className="logo-word">Esocity</span>
+      <span className="logo-word">Esociety</span>
     </span>
   );
 }

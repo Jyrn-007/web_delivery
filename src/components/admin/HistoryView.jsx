@@ -17,7 +17,7 @@ export default function HistoryView({ assignments }) {
   const km = visible.filter((a) => a.status !== 'cancelled').reduce((s, a) => s + a.distanceKm, 0);
 
   function exportCsv() {
-    downloadCsv(`esocity-entregas-${new Date().toISOString().slice(0, 10)}.csv`,
+    downloadCsv(`Esociety-entregas-${new Date().toISOString().slice(0, 10)}.csv`,
       ['Asignación', 'Repartidor', 'Cliente', 'Dirección', 'Distancia (km)', 'Asignada', 'Estado'],
       visible.map((a) => [a.id, a.driverName, a.customerName, a.address, a.distanceKm, formatDateTime(a.assignedAt), STATUS_LABEL[a.status] || a.status]));
   }
