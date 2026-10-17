@@ -121,7 +121,7 @@ export default function LandingPage({ onStart }) {
       {/* ------------------------------------------------ portada */}
       <section className="lp-hero" id="inicio">
         <div className="lp-hero-text">
-          <p className="lp-eyebrow">Esociety · Logística de última milla</p>
+          <p className="lp-eyebrow">Esociety ·</p>
           <h1>Cada pedido, con el repartidor más cercano</h1>
           <p className="lp-lead">
             Esociety asigna cada entrega al repartidor que menos kilómetros recorre. Los clientes
