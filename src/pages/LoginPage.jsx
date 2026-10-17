@@ -43,14 +43,14 @@ export default function LoginPage({ onBack }) {
         <Logo light size={34} />
         <div>
           <h2>Cada entrega, con el repartidor más cercano.</h2>
-          <p>Plataforma de despacho de Esocity: pedidos, repartidores y asignación óptima en un solo lugar.</p>
+          <p>Plataforma de despacho de Esociety: pedidos, repartidores y asignación óptima en un solo lugar.</p>
           <ul>
             <li>Asignación por kilómetros reales (método húngaro)</li>
             <li>Seguimiento del pedido en tiempo real</li>
             <li>Acceso por rol: cliente, repartidor y administrador</li>
           </ul>
         </div>
-        <div className="foot">© {new Date().getFullYear()} Esocity. Todos los derechos reservados.</div>
+        <div className="foot">© {new Date().getFullYear()} Esociety. Todos los derechos reservados.</div>
       </aside>
 
       <main className="login-main">
@@ -59,7 +59,7 @@ export default function LoginPage({ onBack }) {
           <div>
             <h1>{isRegister ? 'Crear cuenta de cliente' : 'Iniciar sesión'}</h1>
             <p className="dim" style={{ marginTop: 4 }}>
-              {isRegister ? 'Regístrate para solicitar tus envíos.' : 'Ingresa con tu cuenta de Esocity.'}
+              {isRegister ? 'Regístrate para solicitar tus envíos.' : 'Ingresa con tu cuenta de Esociety.'}
             </p>
           </div>
 
@@ -105,7 +105,7 @@ export default function LoginPage({ onBack }) {
           </div>
           {!isRegister && (
             <div className="small-note" style={{ textAlign: 'center' }}>
-              Las cuentas de repartidor y administrador las crea un administrador de Esocity.
+              Las cuentas de repartidor y administrador las crea un administrador de Esociety.
             </div>
           )}
         </form>

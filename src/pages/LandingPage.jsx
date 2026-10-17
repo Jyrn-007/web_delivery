@@ -107,7 +107,7 @@ export default function LandingPage({ onStart }) {
     <div className="lp">
       {/* ------------------------------------------------ barra superior */}
       <header className="lp-nav">
-        <a className="lp-brand" href="#inicio" aria-label="Esocity, inicio">
+        <a className="lp-brand" href="#inicio" aria-label="Esociety, inicio">
           <Logo size={32} />
         </a>
         <nav className="lp-links" aria-label="Secciones">
@@ -121,10 +121,10 @@ export default function LandingPage({ onStart }) {
       {/* ------------------------------------------------ portada */}
       <section className="lp-hero" id="inicio">
         <div className="lp-hero-text">
-          <p className="lp-eyebrow">Esocity · Logística de última milla</p>
+          <p className="lp-eyebrow">Esociety · Logística de última milla</p>
           <h1>Cada pedido, con el repartidor más cercano</h1>
           <p className="lp-lead">
-            Esocity asigna cada entrega al repartidor que menos kilómetros recorre. Los clientes
+            Esociety asigna cada entrega al repartidor que menos kilómetros recorre. Los clientes
             piden, los repartidores entregan y la operación se controla desde un solo panel.
           </p>
           <div className="lp-cta">
@@ -220,14 +220,14 @@ export default function LandingPage({ onStart }) {
       {/* ------------------------------------------------ cierre */}
       <section className="lp-final">
         <div className="lp-inner">
-          <h2>Gestiona tus entregas con Esocity</h2>
+          <h2>Gestiona tus entregas con Esociety</h2>
           <p>Ingresa con tu cuenta, o crea tu cuenta de cliente para solicitar un envío.</p>
           <button type="button" className="lp-btn" onClick={onStart}>Ingresar a la plataforma</button>
         </div>
       </section>
 
       <footer className="lp-footer">
-        <span>© {new Date().getFullYear()} Esocity. Todos los derechos reservados.</span>
+        <span>© {new Date().getFullYear()} Esociety. Todos los derechos reservados.</span>
         <span>Pedidos, repartidores y asignación en un solo lugar</span>
       </footer>
     </div>
